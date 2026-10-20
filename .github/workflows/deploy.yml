@@ -1,0 +1,79 @@
+name: Deploy site with Gemini key
+
+# Injects GEMINI_API_KEY into js/config.js for the Pages deployment only.
+# The key is NOT committed back to git (GitHub push protection blocks that).
+#
+# One-time setup: Settings → Pages → Build and deployment → Source = GitHub Actions
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Inject API Key into js/config.js
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          if [ -z "${GEMINI_API_KEY}" ]; then
+            echo "::error::Repository secret GEMINI_API_KEY is missing or empty."
+            echo "Add it under Settings → Secrets and variables → Actions,"
+            echo "then re-run this workflow."
+            exit 1
+          fi
+
+          python3 - <<'PY'
+          import json, os, pathlib
+          key = os.environ["GEMINI_API_KEY"].strip()
+          if not key:
+              raise SystemExit("GEMINI_API_KEY is empty after strip")
+          pin = "c4f72bb0"
+          example = pathlib.Path("js/config.example.js")
+          if example.exists():
+              text = example.read_text(encoding="utf-8")
+              import re
+              m = re.search(r'pinHash:\s*"([^"]+)"', text)
+              if m:
+                  pin = m.group(1)
+          pathlib.Path("js/config.js").write_text(
+              "/* config.js — injected at deploy time from secret GEMINI_API_KEY (not stored in git) */\n"
+              "window.APP_CONFIG = {\n"
+              f"  geminiApiKey: {json.dumps(key)},\n"
+              f"  pinHash: {json.dumps(pin)}\n"
+              "};\n",
+              encoding="utf-8",
+          )
+          print("Wrote js/config.js with a non-empty Gemini API key for Pages artifact.")
+          PY
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
