@@ -19,6 +19,9 @@ const API_ON = !!GEMINI.apiKey;
 /* Parent PIN. Only a hash is stored. To change it, open the browser console on this page,
    run  pinHash('1234')  and put the result in js/config.js as pinHash. */
 const PIN_HASH = CFG.pinHash || 'c4f72bb0';
+/* Site access PIN (landing / papers). Hash only — same pinHash() helper. Code is not stored in source. */
+const ACCESS_PIN_HASH = '86e38212';
+const ACCESS_STORE_KEY = 'p4chinese.access';
 
 const STORE_KEY = 'p4chinese.v1';
 const $id = id => document.getElementById(id);
@@ -124,6 +127,7 @@ function renderLanding() {
 $id('student-name').addEventListener('input', e => { store.name = e.target.value; saveStore(); });
 
 function goHome() {
+  if (!hasAccess()) { showAccessGate(); return; }
   if (TEST && !marked) saveAnswers();
   TEST = null; closeChat(); document.body.classList.add('chat-hidden');
   $id('test-view').classList.add('hidden'); $id('landing').classList.remove('hidden');
@@ -143,6 +147,7 @@ async function retakeTest(id) {
 
 /* ===================== OPEN A PAPER ===================== */
 async function openTest(id) {
+  if (!hasAccess()) { showAccessGate(); return; }
   const t = TESTS.find(x => x.id === id); if (!t) return goHome();
   TEST = t; QUESTIONS = t.questions; att = attemptFor(id);
   marked = att.status === 'marked'; pinPassed = false; photosUnlocked = false;
@@ -414,6 +419,68 @@ function pinHash(pin) {
   for (const c of 'p4maths|' + String(pin).trim()) { x ^= c.codePointAt(0); x = Math.imul(x, 0x01000193) >>> 0; }
   return x.toString(16).padStart(8, '0');
 }
+
+/* ===================== SITE ACCESS GATE ===================== */
+let accessFails = 0, accessLockUntil = 0;
+function hasAccess() {
+  try { return sessionStorage.getItem(ACCESS_STORE_KEY) === ACCESS_PIN_HASH; }
+  catch (_) { return false; }
+}
+function showAccessGate() {
+  TEST = null;
+  try { closeChat(); } catch (_) {}
+  document.body.classList.add('chat-hidden');
+  $id('landing').classList.add('hidden');
+  $id('test-view').classList.add('hidden');
+  $id('access-gate').classList.remove('hidden');
+  // Clear #paper=… so deep links cannot bypass the gate (or auto-open after unlock)
+  if (location.hash) {
+    const clean = location.pathname + location.search || './';
+    history.replaceState(null, '', clean);
+  }
+  const i = $id('access-pin');
+  $id('access-error').textContent = '';
+  if (i) { i.value = ''; setTimeout(() => i.focus(), 30); }
+  window.scrollTo(0, 0);
+}
+function unlockAccess() {
+  try { sessionStorage.setItem(ACCESS_STORE_KEY, ACCESS_PIN_HASH); } catch (_) {}
+  $id('access-gate').classList.add('hidden');
+  $id('landing').classList.remove('hidden');
+  accessFails = 0;
+  renderLanding();
+  window.scrollTo(0, 0);
+}
+function lockAccess() {
+  if (TEST && !marked) saveAnswers();
+  TEST = null;
+  try { closeChat(); } catch (_) {}
+  document.body.classList.add('chat-hidden');
+  try { sessionStorage.removeItem(ACCESS_STORE_KEY); } catch (_) {}
+  showAccessGate();
+}
+function checkAccessPin() {
+  const err = $id('access-error'), input = $id('access-pin');
+  const wait = Math.ceil((accessLockUntil - Date.now()) / 1000);
+  if (wait > 0) { err.textContent = `Too many tries. Please wait ${wait} s.`; return; }
+  const raw = String(input.value || '').trim();
+  if (!/^\d{4}$/.test(raw)) { err.textContent = 'Enter the 4-digit access code.'; input.focus(); return; }
+  if (pinHash(raw) === ACCESS_PIN_HASH) { unlockAccess(); return; }
+  accessFails++; input.value = '';
+  const box = $id('access-box'); box.classList.remove('shake'); void box.offsetWidth; box.classList.add('shake');
+  if (accessFails >= 3) { accessLockUntil = Date.now() + 30000; accessFails = 0; err.textContent = 'Wrong code 3 times. Please wait 30 s.'; }
+  else err.textContent = 'Wrong code, please try again.';
+  input.focus();
+}
+$id('access-pin').addEventListener('keydown', e => {
+  if (e.key === 'Enter') { e.preventDefault(); checkAccessPin(); }
+});
+$id('access-pin').addEventListener('input', e => {
+  e.target.value = e.target.value.replace(/\D/g, '').slice(0, 4);
+  $id('access-error').textContent = '';
+  if (e.target.value.length === 4) checkAccessPin();
+});
+
 function askPin({ title, msg, okLabel, blanks }, onOk) {
   pinAction = onOk;
   $id('pin-title').textContent = title; $id('pin-msg').textContent = msg; $id('pin-ok').textContent = okLabel;
@@ -1055,6 +1122,9 @@ async function downloadProgressPdf() {
 window.addEventListener('beforeunload', () => { if (TEST && !marked) saveAnswers(); });
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden' && TEST && !marked) saveAnswers(); });
 (function start() {
+  if (!hasAccess()) { showAccessGate(); return; }
+  $id('access-gate').classList.add('hidden');
+  $id('landing').classList.remove('hidden');
   const m = location.hash.match(/paper=([\w-]+)/);
   if (m && TESTS.some(t => t.id === m[1])) openTest(m[1]); else renderLanding();
 })();
