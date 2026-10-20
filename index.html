@@ -17,17 +17,33 @@
 </head>
 <body class="chat-hidden bg-slate-100 text-slate-800 min-h-screen">
 
+<!-- ===================== ACCESS GATE ===================== -->
+<div id="access-gate" class="max-w-md mx-auto">
+  <div id="access-box" class="bg-white rounded-2xl shadow-xl p-8 text-center">
+    <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50 text-2xl" aria-hidden="true">🔒</div>
+    <h1 class="text-2xl font-bold text-red-600">P4 华文 Practice Papers</h1>
+    <p class="text-slate-500 mt-2 text-sm">This practice site is private. Enter the 4-digit access code to continue.</p>
+    <label for="access-pin" class="sr-only">Access code</label>
+    <input id="access-pin" type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" maxlength="4" aria-label="4-digit access code" class="inp mt-6 w-44 text-center text-3xl tracking-[0.55em] font-semibold" placeholder="••••">
+    <p id="access-error" class="text-sm text-red-600 min-h-[1.25rem] mt-3" role="status" aria-live="polite"></p>
+    <button type="button" id="access-ok" onclick="checkAccessPin()" class="mt-2 w-full bg-red-600 hover:bg-red-700 text-white font-bold px-6 py-3 rounded-xl shadow-lg transition">Unlock</button>
+    <p class="text-xs text-slate-400 mt-4">Ask a parent or teacher if you do not know the code.</p>
+  </div>
+</div>
+
 <!-- ===================== LANDING ===================== -->
-<div id="landing" class="max-w-5xl mx-auto">
+<div id="landing" class="hidden max-w-5xl mx-auto">
   <header class="bg-white rounded-2xl shadow-xl p-6 md:p-8 mb-6">
     <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
       <div>
+        <p class="text-xs font-semibold uppercase tracking-wide text-red-500 mb-1">Private practice · access unlocked</p>
         <h1 class="text-3xl font-bold text-red-600">P4 华文 Practice Papers</h1>
         <p class="text-slate-500 mt-1">2025 年终考试 End-of-Year papers · choose a paper to start, continue or review</p>
       </div>
-      <div class="flex items-center gap-2">
+      <div class="flex flex-wrap items-center gap-2">
         <label for="student-name" class="text-sm text-slate-600">Name</label>
         <input id="student-name" class="inp w-56" placeholder="Your name (optional)">
+        <button type="button" onclick="lockAccess()" class="text-sm font-medium text-slate-600 hover:bg-slate-50 border border-slate-300 rounded-lg px-3 py-2" title="Lock the site again">Lock</button>
       </div>
     </div>
     <div id="overall" class="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center"></div>

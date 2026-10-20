@@ -14,6 +14,14 @@ Check: open `https://imbuenoing.github.io/p4-chinese-paper2/js/config.js` — it
 
 For local use, copy `js/config.example.js` to `js/config.js` and add a key, or leave it empty (options questions still mark; a parent marks writing by hand).
 
+## Access PIN
+
+Landing and papers stay locked until the 4-digit site access code is entered (`ACCESS_PIN_HASH`). Use **Lock** on the landing page to lock again. Only a hash is stored in source (same `pinHash` helper as the parent mark PIN). Direct `#paper=…` links cannot bypass the gate.
+
+## Parent PIN
+
+Used to mark a paper or clear saved data (`PIN_HASH`). Same PIN as the P4 Maths app.
+
 ## Papers
 
 | School | Paper | Marks |
