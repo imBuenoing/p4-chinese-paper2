@@ -1,0 +1,5 @@
+.DS_Store
+node_modules/
+# Local overrides only — committed js/config.js keeps a placeholder;
+# the real key is injected at Pages deploy from secret GEMINI_API_KEY.
+js/config.local.js
